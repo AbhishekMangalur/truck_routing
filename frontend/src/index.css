@@ -1,0 +1,82 @@
+
+:root {
+  font-family: Inter, system-ui, Arial, sans-serif;
+  color: #172033;
+  background: #f3f6fb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; min-width: 320px; }
+
+.app { max-width: 1050px; margin: auto; padding: 36px 22px 60px; }
+
+.hero { padding: 32px 0; }
+.eyebrow { color: #2878d0; font-size: 12px; font-weight: 800; letter-spacing: 2px; }
+.hero h1 { font-size: clamp(30px, 5vw, 48px); line-height: 1.1; margin: 12px 0; }
+.hero p:last-child, .muted { color: #64748b; line-height: 1.6; }
+
+.panel, .route-card {
+  background: white;
+  border: 1px solid #e1e7f0;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 28px #1525440a;
+}
+
+h2 { margin-top: 0; }
+form { display: grid; gap: 18px; }
+label { display: grid; gap: 8px; color: #4a5568; font-size: 13px; font-weight: 650; }
+input { width: 100%; padding: 12px; border: 1px solid #d6deea; border-radius: 9px; font: inherit; color: #172033; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+button { background: #2165d5; color: white; border: 0; border-radius: 9px; padding: 14px 18px; font: inherit; font-weight: 750; cursor: pointer; }
+button:disabled { opacity: .6; cursor: wait; }
+.results { margin-top: 32px; }
+.route-card { margin: 16px 0; }
+.route-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.route-heading h3 { margin: 0; }
+.recommended { color: #16734a; background: #e7f7ee; border-radius: 20px; padding: 6px 10px; font-size: 12px; font-weight: 750; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0; }
+.stats div { background: #f5f7fb; padding: 14px; border-radius: 10px; }
+.stats span, .stats strong { display: block; }
+.stats span { color: #64748b; font-size: 12px; margin-bottom: 7px; }
+.stats strong { font-size: 18px; }
+.checkpoint { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #edf0f5; font-size: 13px; }
+.risk { font-weight: 750; }
+.risk-low { color: #16834a; }
+.risk-moderate { color: #a66b00; }
+.risk-high { color: #d16a00; }
+.risk-severe, .risk-no-travel { color: #c62828; }
+.error { color: #c62828; background: #fff0f0; padding: 12px; border-radius: 8px; }
+
+@media (max-width: 650px) {
+  .app { padding: 20px 14px 40px; }
+  .panel, .route-card { padding: 17px; }
+  .form-row, .stats { grid-template-columns: 1fr; }
+}
+
+
+.map-legend {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #ffffff;
+  color: #1f2937;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  font-size: 13px;
+}
+
+.map-legend strong {
+  margin-right: 8px;
+}
+
+.map-legend small {
+  color: #6b7280;
+}
