@@ -29,6 +29,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-key-change-before-deploy")
 DEBUG = False
 
 ALLOWED_HOSTS = [
+    "truckrouting-jmuvj1tap-abhisheks-projects-3c816ed5.vercel.app",
     "localhost",
     "127.0.0.1",
     ".vercel.app",
