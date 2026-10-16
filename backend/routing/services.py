@@ -96,7 +96,6 @@ load_dotenv()
 FREEROUTE_BASE_URL = "https://api.maps.freeroute.org/v1"
 
 
-
 def get_routes(
     origin_lon: float,
     origin_lat: float,
@@ -110,88 +109,127 @@ def get_routes(
 
     url = f"{FREEROUTE_BASE_URL}/directions/driving-car"
 
-    try:
-        response = requests.post(
-            url,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    selected_routes = []
+    max_attempts = 5
+    max_overlap = 0.70
+
+    for attempt in range(1, max_attempts + 1):
+        # Vary the alternative-route settings between attempts.
+        share_factor = max(0.1, 0.3 - (attempt - 1) * 0.05)
+        weight_factor = 1.4 + (attempt - 1) * 0.3
+
+        payload = {
+            "coordinates": [
+                [origin_lon, origin_lat],
+                [destination_lon, destination_lat],
+            ],
+            "instructions": True,
+            "alternative_routes": {
+                "target_count": 3,
+                "share_factor": share_factor,
+                "weight_factor": weight_factor,
             },
-            json={
-                "coordinates": [
-                    [origin_lon, origin_lat],
-                    [destination_lon, destination_lat],
-                ],
-                "instructions": True,
-                "alternative_routes": {
-                    "target_count": 3,
-                    "share_factor": 0.6,
-                    "weight_factor": 1.4,
-                },
-            },
-            timeout=30,
+        }
+
+        print(
+            f"Route generation attempt {attempt}/{max_attempts}: "
+            f"share_factor={share_factor}, "
+            f"weight_factor={weight_factor}"
         )
 
-        print("Routing provider status:", response.status_code)
-        print("Routing provider response:", response.text[:2000])
+        try:
+            response = requests.post(
+                url,
+                headers=headers,
+                json=payload,
+                timeout=30,
+            )
+            print("Routing provider status:", response.status_code)
+            response.raise_for_status()
+            data = response.json()
 
-        response.raise_for_status()
-        data = response.json()
-
-    except requests.RequestException as exc:
-        print("Routing provider request failed:", repr(exc))
-        raise RuntimeError(
-            f"Routing provider request failed: {exc}"
-        ) from exc
-
-    # FreeRoute returns GeoJSON with routes inside "features".
-    features = data.get("features", [])
-
-    if not features:
-        raise ValueError(
-            f"No route features returned. Response type: {data.get('type')}"
-        )
-
-    routes = []
-
-    for feature in features[:3]:
-        geometry = feature.get("geometry") or {}
-        properties = feature.get("properties") or {}
-        segments = properties.get("segments") or []
-
-        # Skip invalid routes.
-        if not geometry.get("coordinates"):
+        except requests.RequestException as exc:
+            print("Routing provider request failed:", repr(exc))
+            if not selected_routes:
+                raise RuntimeError(
+                    f"Routing provider request failed: {exc}"
+                ) from exc
             continue
 
-        distance = sum(
-            segment.get("distance", 0) for segment in segments
-        )
-        duration = sum(
-            segment.get("duration", 0) for segment in segments
-        )
+        features = data.get("features", [])
 
-        # Fall back to route-level values if segments are unavailable.
-        if not distance:
-            distance = properties.get("summary", {}).get("distance", 0)
+        for feature in features:
+            geometry = feature.get("geometry") or {}
+            properties = feature.get("properties") or {}
+            segments = properties.get("segments") or []
+            coordinates = geometry.get("coordinates") or []
 
-        if not duration:
-            duration = properties.get("summary", {}).get("duration", 0)
+            if len(coordinates) < 2:
+                continue
 
-        routes.append({
-            "route_id": len(routes) + 1,
-            "distance_meters": distance,
-            "duration_seconds": duration,
-            "geometry": geometry,
-            "segments": segments,
-        })
+            distance = sum(
+                segment.get("distance", 0)
+                for segment in segments
+            )
+            duration = sum(
+                segment.get("duration", 0)
+                for segment in segments
+            )
 
-    if not routes:
+            summary = properties.get("summary") or {}
+
+            if not distance:
+                distance = summary.get("distance", 0)
+
+            if not duration:
+                duration = summary.get("duration", 0)
+
+            candidate = {
+                "distance_meters": distance,
+                "duration_seconds": duration,
+                "geometry": geometry,
+                "segments": segments,
+            }
+
+            if is_distinct_route(
+                candidate,
+                selected_routes,
+                max_overlap=max_overlap,
+            ):
+                candidate["route_id"] = len(selected_routes) + 1
+                selected_routes.append(candidate)
+
+                print(
+                    f"Accepted route {candidate['route_id']} "
+                    f"on attempt {attempt}"
+                )
+
+            else:
+                print("Rejected overlapping candidate; trying another.")
+
+            if len(selected_routes) == 3:
+                break
+
+        if len(selected_routes) == 3:
+            break
+
+    if not selected_routes:
         raise ValueError("The routing API returned no valid routes.")
 
-    print(f"Valid routes returned: {len(routes)}")
+    if len(selected_routes) < 3:
+        print(
+            f"Warning: only {len(selected_routes)} distinct routes "
+            f"were found after {max_attempts} attempts."
+        )
 
-    return routes
+    print(f"Distinct routes returned: {len(selected_routes)}")
 
+    return selected_routes
 
 import math
 from datetime import datetime, timedelta, timezone
@@ -451,3 +489,55 @@ def analyze_route_weather(
     )
 
     return route
+
+def route_overlap_ratio(
+    route_a: dict,
+    route_b: dict,
+    precision: int = 4,
+) -> float:
+    """
+    Estimate overlap using rounded road-coordinate points.
+    Coordinates are GeoJSON [longitude, latitude].
+    """
+    coords_a = route_a.get("geometry", {}).get("coordinates", [])
+    coords_b = route_b.get("geometry", {}).get("coordinates", [])
+
+    if not coords_a or not coords_b:
+        return 1.0
+
+    points_a = {
+        (round(point[0], precision), round(point[1], precision))
+        for point in coords_a
+        if len(point) >= 2
+    }
+    points_b = {
+        (round(point[0], precision), round(point[1], precision))
+        for point in coords_b
+        if len(point) >= 2
+    }
+
+    if not points_a or not points_b:
+        return 1.0
+
+    shared = len(points_a & points_b)
+
+    return shared / min(len(points_a), len(points_b))
+
+
+def is_distinct_route(
+    candidate: dict,
+    selected_routes: list[dict],
+    max_overlap: float = 0.70,
+) -> bool:
+    """Reject a candidate if it overlaps too much with any selected route."""
+    for route in selected_routes:
+        overlap = route_overlap_ratio(candidate, route)
+        print(
+            f"Candidate overlap with route "
+            f"{route['route_id']}: {overlap:.1%}"
+        )
+
+        if overlap > max_overlap:
+            return False
+
+    return True

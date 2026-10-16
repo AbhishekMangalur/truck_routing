@@ -2,7 +2,7 @@ import RouteMap from "./components/RouteMap";
 import { useState } from "react";
 import "./index.css";
 
-const API_URL = "/api/routes/";
+const API_URL = "http://127.0.0.1:8000/api/routes/";
 
 
 type Route = {
