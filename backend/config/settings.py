@@ -22,12 +22,17 @@ load_dotenv(BASE_DIR / ".env")
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ertsd)#mumrgatjd#&14t_vzfvc94*((9*g$pgzl+v9+ln6de7'
+# SECRET_KEY = 'django-insecure-ertsd)#mumrgatjd#&14t_vzfvc94*((9*g$pgzl+v9+ln6de7'
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-key-change-before-deploy")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    ".vercel.app",
+]
 
 
 # Application definition
@@ -129,5 +134,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
+    "https://truckrouting-jmuvj1tap-abhisheks-projects-3c816ed5.vercel.app/",
 ]
-
