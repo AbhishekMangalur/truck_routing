@@ -28,13 +28,7 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-key-change-before-deploy")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = [
-    "truckrouting-jmuvj1tap-abhisheks-projects-3c816ed5.vercel.app",
-    "localhost",
-    "127.0.0.1",
-    ".vercel.app",
-]
-
+ALLOWED_HOSTS = ["*"]
 
 # Application definition
 
@@ -133,7 +127,4 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "https://truckrouting-jmuvj1tap-abhisheks-projects-3c816ed5.vercel.app/",
-]
+CORS_ALLOWED_ORIGINS = True
