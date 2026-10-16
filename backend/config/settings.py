@@ -131,13 +131,3 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
 ]
 
-PUBLIC_IP = os.getenv("PUBLIC_IP", "")
-
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    ".vercel.app",
-]
-
-if PUBLIC_IP:
-    ALLOWED_HOSTS.append(PUBLIC_IP)
