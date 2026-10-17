@@ -2,8 +2,7 @@ import RouteMap from "./components/RouteMap";
 import { useState } from "react";
 import "./index.css";
 
-const API_URL = "api/routes/";
-
+const API_URL ="https://truckrouting-jbj5ernrf-abhisheks-projects-3c816ed5.vercel.app/api/routes/";
 
 type Route = {
   route_id: number;
