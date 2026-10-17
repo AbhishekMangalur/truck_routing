@@ -1,6 +1,7 @@
 
 import json
 import math
+import logging
 from datetime import datetime, timedelta, timezone
 
 from django.http import JsonResponse
@@ -18,12 +19,15 @@ def health_check(request):
     })
 
 
+logger = logging.getLogger(__name__)
+
+
 @csrf_exempt
 def routes_view(request):
     if request.method != "POST":
         return JsonResponse({"error": "Use POST"}, status=405)
 
-    # 1. Parse and validate the request before calling external APIs.
+    # 1. Parse and validate the request.
     try:
         payload = json.loads(request.body)
 
@@ -74,15 +78,19 @@ def routes_view(request):
                 status=400,
             )
 
-        if not (-180 <= origin_lon <= 180 and
-                -180 <= destination_lon <= 180):
+        if not (
+            -180 <= origin_lon <= 180
+            and -180 <= destination_lon <= 180
+        ):
             return JsonResponse(
                 {"error": "Longitude must be between -180 and 180."},
                 status=400,
             )
 
-        if not (-90 <= origin_lat <= 90 and
-                -90 <= destination_lat <= 90):
+        if not (
+            -90 <= origin_lat <= 90
+            and -90 <= destination_lat <= 90
+        ):
             return JsonResponse(
                 {"error": "Latitude must be between -90 and 90."},
                 status=400,
@@ -107,9 +115,17 @@ def routes_view(request):
             )
 
         departure_text = payload["departure_datetime"]
-        if not isinstance(departure_text, str) or not departure_text.strip():
+
+        if (
+            not isinstance(departure_text, str)
+            or not departure_text.strip()
+        ):
             return JsonResponse(
-                {"error": "departure_datetime must be a valid ISO datetime."},
+                {
+                    "error": (
+                        "departure_datetime must be a valid ISO datetime."
+                    )
+                },
                 status=400,
             )
 
@@ -121,6 +137,7 @@ def routes_view(request):
             departure = departure.replace(tzinfo=timezone.utc)
 
         departure = departure.astimezone(timezone.utc)
+
         analysis_departure = departure + timedelta(
             hours=forecast_offset_hours
         )
@@ -130,6 +147,7 @@ def routes_view(request):
             {"error": "Request body must contain valid JSON."},
             status=400,
         )
+
     except (ValueError, TypeError, OverflowError):
         return JsonResponse(
             {"error": "Invalid numeric value or datetime format."},
@@ -146,19 +164,28 @@ def routes_view(request):
         )
 
         if not routes:
+            logger.error("Routing provider returned no routes.")
+
             return JsonResponse(
                 {"error": "The routing provider returned no routes."},
                 status=502,
             )
 
     except Exception:
-        print("Routing provider failed.")
+        # Logs the full traceback in the server logs.
+        logger.exception("Routing provider failed in get_routes()")
+
         return JsonResponse(
-            {"error": "Unable to retrieve routes. Check provider configuration and server logs."},
+            {
+                "error": (
+                    "Unable to retrieve routes. "
+                    "Check provider configuration and server logs."
+                )
+            },
             status=502,
         )
 
-    # 3. Analyze weather separately so forecast errors are identifiable.
+    # 3. Analyze weather and recommend the safest route.
     try:
         for route in routes:
             analyze_route_weather(
@@ -171,34 +198,44 @@ def routes_view(request):
         routes = recommend_route(routes)
 
         if not routes:
+            logger.error("No routes could be recommended.")
+
             return JsonResponse(
                 {"error": "No routes could be recommended."},
                 status=502,
             )
 
     except ValueError as exc:
-        print("Weather analysis unavailable:", str(exc))
+        logger.exception("Weather forecast unavailable")
+
         return JsonResponse(
             {
-                "error": "Weather forecast unavailable for one or more route checkpoints.",
+                "error": (
+                    "Weather forecast unavailable for one or more "
+                    "route checkpoints."
+                ),
                 "details": str(exc),
             },
             status=422,
         )
+
     except Exception:
-        print("Weather analysis failed.")
+        logger.exception("Weather analysis failed")
+
         return JsonResponse(
             {"error": "Weather analysis failed. Check server logs."},
             status=502,
         )
 
-    # 4. Return the successful analysis.
-    return JsonResponse({
-        "routes_count": len(routes),
-        "recommended_route_id": routes[0]["route_id"],
-        "forecast_offset_hours": forecast_offset_hours,
-        "analysis_departure_datetime": (
-            analysis_departure.isoformat().replace("+00:00", "Z")
-        ),
-        "routes": routes,
-    })
+    # 4. Return successful route analysis.
+    return JsonResponse(
+        {
+            "routes_count": len(routes),
+            "recommended_route_id": routes[0]["route_id"],
+            "forecast_offset_hours": forecast_offset_hours,
+            "analysis_departure_datetime": (
+                analysis_departure.isoformat().replace("+00:00", "Z")
+            ),
+            "routes": routes,
+        }
+    )
