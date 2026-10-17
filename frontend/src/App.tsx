@@ -29,7 +29,11 @@ type Route = {
 export default function App() {
   const [origin, setOrigin] = useState("-122.4194, 37.7749");
   const [destination, setDestination] = useState("-121.8863, 37.3382");
-  const [departure, setDeparture] = useState("2026-10-16T18:00");
+  const [departure, setDeparture] = useState(() => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 16);
+  });
   const [load, setLoad] = useState("20000");
   const [routes, setRoutes] = useState<Route[]>([]);
   const [recommended, setRecommended] = useState<number | null>(null);
