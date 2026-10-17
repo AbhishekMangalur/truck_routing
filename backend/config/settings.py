@@ -127,7 +127,9 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [
+    "https://truckrouting-gamma.vercel.app",
+    "https://truckrouting-nx9ksg8tj-abhisheks-projects-3c816ed5.vercel.app/",
     "http://localhost:5173",
 ]
